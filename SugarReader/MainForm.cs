@@ -5,8 +5,6 @@ using Newtonsoft.Json;
 using System.Threading;
 using System.Windows.Forms;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace SugarReader
 {
@@ -23,6 +21,7 @@ namespace SugarReader
 			this.FormClosed += (o, e) => { abortUpdater = true; };
 			this.locker = new object();
 			this.abortUpdater = false;
+
 			InitializeComponent();
 			GetCurrentSugarRead();
 			Task.Run(MsgBoxAlert);
@@ -33,17 +32,18 @@ namespace SugarReader
 		{
 			while (!this.abortUpdater)
 			{
-				Thread.Sleep(TimeSpan.FromMinutes(30));
-				lock (this.locker) {
-					if (this.currentSugar > Properties.Settings.Default.MaxSugar)
-					{
-						MessageBox.Show("Your sugar is too HIGH! treat it!", "High sugar level alert");
-					} else if(this.currentSugar < Properties.Settings.Default.MinSugar)
-                    {
-						MessageBox.Show("Your sugar is too LOW! treat it!", "Low sugar level alert");
-					}
-		 
+				Monitor.Enter(locker); 
+				if (this.currentSugar > Properties.Settings.Default.MaxSugar)
+				{
+					Monitor.Exit(locker);
+					MessageBox.Show("Your sugar is too HIGH! treat it!", "High sugar level alert");
 				}
+				else if (this.currentSugar < Properties.Settings.Default.MinSugar)
+				{
+					Monitor.Exit(locker);
+					MessageBox.Show("Your sugar is too LOW! treat it!", "Low sugar level alert");
+				}
+				Thread.Sleep(TimeSpan.FromMinutes(20));
 			}
 		}
 
@@ -51,8 +51,8 @@ namespace SugarReader
 		{
 			while (!this.abortUpdater)
 			{
-				Thread.Sleep(TimeSpan.FromMinutes(1));
 				GetCurrentSugarRead();
+				Thread.Sleep(TimeSpan.FromMinutes(1));
 			}
 		}
 
@@ -62,7 +62,7 @@ namespace SugarReader
 			{
 				string jsonData = this.client.DownloadString(Properties.Settings.Default.UserAPIurl);
 				dynamic responseObject = JsonConvert.DeserializeObject(jsonData);
-				this.currentSugar = responseObject.value;
+				this.currentSugar = 60;
 				this.infoLabel.Text = responseObject.full;
 			}
 
@@ -79,5 +79,5 @@ namespace SugarReader
 				this.infoLabel.ForeColor = System.Drawing.Color.Green;
 			}
 		}
-	 }
+	}
 }
